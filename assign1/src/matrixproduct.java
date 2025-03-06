@@ -8,7 +8,7 @@ public class matrixproduct {
         double[] pha = new double[m_ar * m_ar];
         double[] phb = new double[m_ar * m_ar];
         double[] phc = new double[m_ar * m_ar];
-        
+
         for (int i = 0; i < m_ar; i++) {
             for (int j = 0; j < m_ar; j++) {
                 pha[i * m_ar + j] = 1.0;
@@ -20,9 +20,9 @@ public class matrixproduct {
                 phb[i * m_br + j] = i + 1;
             }
         }
-        
+
         long startTime = System.nanoTime();
-        
+
         for (int i = 0; i < m_ar; i++) {
             for (int j = 0; j < m_br; j++) {
                 temp = 0;
@@ -32,10 +32,10 @@ public class matrixproduct {
                 phc[i * m_ar + j] = temp;
             }
         }
-        
+
         long endTime = System.nanoTime();
         System.out.printf("Time: %.3f seconds\n", (endTime - startTime) / 1.0e9);
-        
+
         System.out.println("Result matrix:");
         for(int i = 0; i < 1; i++) {
             for (int j = 0; j < Math.min(10, m_br); j++) {
@@ -46,7 +46,43 @@ public class matrixproduct {
     }
 
     public static void onMultLine(int m_ar, int m_br) {
-        // Implement line-by-line multiplication here
+        double[] pha = new double[m_ar * m_ar];
+        double[] phb = new double[m_ar * m_ar];
+        double[] phc = new double[m_ar * m_ar];
+
+        for (int i = 0; i < m_ar; i++) {
+            for (int j = 0; j < m_ar; j++) {
+                pha[i * m_ar + j] = 1.0;
+            }
+        }
+
+        for (int i = 0; i < m_br; i++) {
+            for (int j = 0; j < m_br; j++) {
+                phb[i * m_br + j] = i + 1;
+            }
+        }
+
+
+        long startTime = System.nanoTime();
+
+        for(int i=0; i<m_ar; i++)
+        {    for(int k=0; k<m_ar; k++ )
+        { for(int j=0; j<m_br; j++)
+        {
+            phc[i*m_ar+j] += pha[i*m_ar+k] * phb[k*m_br+j];
+        }
+        }
+        }
+        long endTime = System.nanoTime();
+        System.out.printf("Time: %.3f seconds\n", (endTime - startTime) / 1.0e9);
+
+        System.out.println("Result matrix:");
+        for(int i = 0; i < 1; i++) {
+            for (int j = 0; j < Math.min(10, m_br); j++) {
+                System.out.print(phc[j] + " ");
+            }
+        }
+        System.out.println();
     }
 
 
