@@ -8,7 +8,9 @@ public class ChatServer {
     private static final int PORT = 12345;
     private static final Map<String, String> userCredentials = new HashMap<>();
     private static final Map<String, Session> activeSessions = new HashMap<>();
-    private static final Map<String, ChatRoom> chatRooms = new HashMap<>();
+    private static final Map<String, Room> chatRooms = new HashMap<>();
+
+
     private static final Lock lock = new ReentrantLock();
 
     public static void main(String[] args) {
@@ -42,7 +44,7 @@ public class ChatServer {
     private static void handleClient(Socket socket) {
         String username = null;
         String token = null;
-        ChatRoom currentRoom = null;
+        Room currentRoom = null;
 
         try (
                 socket;
@@ -95,7 +97,7 @@ public class ChatServer {
                         String roomName = parts[1];
                         lock.lock();
                         try {
-                            currentRoom = chatRooms.computeIfAbsent(roomName, ChatRoom::new);
+                            currentRoom = chatRooms.computeIfAbsent(roomName, Room::new);
                             currentRoom.addClient(username, writer);
                         } finally {
                             lock.unlock();
@@ -181,47 +183,6 @@ public class ChatServer {
 
         boolean isExpired() {
             return Instant.now().isAfter(expiry);
-        }
-    }
-
-    private static class ChatRoom {
-        private final String name;
-        private final Map<String, PrintWriter> clients = new HashMap<>();
-        private final Lock roomLock = new ReentrantLock();
-
-        ChatRoom(String name) {
-            this.name = name;
-        }
-
-        void addClient(String username, PrintWriter writer) {
-            roomLock.lock();
-            try {
-                clients.put(username, writer);
-            } finally {
-                roomLock.unlock();
-            }
-        }
-
-        void removeClient(String username) {
-            roomLock.lock();
-            try {
-                clients.remove(username);
-            } finally {
-                roomLock.unlock();
-            }
-        }
-
-        void broadcast(String message, String sender) {
-            roomLock.lock();
-            try {
-                for (Map.Entry<String, PrintWriter> entry : clients.entrySet()) {
-                    if (!entry.getKey().equals(sender)) {
-                        entry.getValue().println(message);
-                    }
-                }
-            } finally {
-                roomLock.unlock();
-            }
         }
     }
 }
