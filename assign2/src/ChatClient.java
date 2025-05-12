@@ -13,12 +13,15 @@ public class ChatClient {
                 PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
                 Scanner scanner = new Scanner(System.in)
         ) {
-            // Start a thread to listen for messages from the server
             new Thread(() -> {
                 String serverMessage;
                 try {
                     while ((serverMessage = reader.readLine()) != null) {
                         System.out.println(serverMessage);
+                        // se for o sucesso do AUTH, pede logo a lista de salas
+                        if (serverMessage.startsWith("AUTH_SUCCESS")) {
+                            writer.println("LIST");
+                        }
                     }
                 } catch (IOException e) {
                     System.err.println("Connection closed.");

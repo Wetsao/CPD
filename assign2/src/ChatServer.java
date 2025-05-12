@@ -83,10 +83,15 @@ public class ChatServer {
                             }
                             username = user;
                             writer.println("AUTH_SUCCESS " + token);
-                            writer.println("Available commands: JOIN <room>, LEAVE, MSG <message>, QUIT");
+                            writer.println("Available commands: JOIN <room>, LEAVE, MSG <message>, QUIT, LIST");
                         } else {
                             writer.println("ERROR: Authentication failed.");
                         }
+                        break;
+
+                    case "LIST":
+                        // devolve ao cliente a lista de salas existentes
+                        writer.println("ROOMS " + String.join(",", chatRooms.keySet()));
                         break;
 
                     case "JOIN":
