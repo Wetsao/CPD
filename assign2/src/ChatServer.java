@@ -122,16 +122,7 @@ public class ChatServer {
                             break;
                         }
                         String newUser = regParts[0];
-                        writer.print(newUser);
-                        writer.print(newUser);
-                        writer.print(newUser);
-                        writer.print(newUser);
                         String newPass = regParts[1];
-                        writer.print(newPass);
-                        writer.print(newPass);
-                        writer.print(newPass);
-                        writer.print(newPass);
-
                         if (!newUser.matches("^[a-zA-Z0-9]{3,20}$")) {
                             writer.println("ERROR: Username must be 3-20 alphanumeric characters");
                             break;
