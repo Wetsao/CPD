@@ -5,31 +5,34 @@ import java.util.Scanner;
 public class ChatClient {
     private static final String SERVER_ADDRESS = "localhost";
     private static final int SERVER_PORT = 12345;
+    private static String sessionToken;
 
     public static void main(String[] args) {
-        try (
+        try(
                 Socket socket = new Socket(SERVER_ADDRESS, SERVER_PORT);
                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
                 Scanner scanner = new Scanner(System.in)
         ) {
-            new Thread(() -> {
+            Thread.ofVirtual().start(() -> {
                 String serverMessage;
                 try {
-                    while ((serverMessage = reader.readLine()) != null) {
+                    while((serverMessage = reader.readLine()) != null) {
                         System.out.println(serverMessage);
                         // se for o sucesso do AUTH, pede logo a lista de salas
                         if (serverMessage.startsWith("AUTH_SUCCESS")) {
+                            sessionToken = serverMessage.split(" ")[1];
                             writer.println("LIST");
                         }
                     }
                 } catch (IOException e) {
                     System.err.println("Connection closed.");
+                    reconnect();
                 }
-            }).start();
+            });
 
             // Read user input and send to server
-            while (true) {
+            while(true) {
                 String userInput = scanner.nextLine();
                 writer.println(userInput);
                 if (userInput.equalsIgnoreCase("QUIT")) {
@@ -38,6 +41,35 @@ public class ChatClient {
             }
         } catch (IOException e) {
             System.err.println("Unable to connect to the server: " + e.getMessage());
+        }
+    }
+
+    private static void reconnect() {
+        while(true) {
+            try{
+                Socket newSocket = new Socket(SERVER_ADDRESS, SERVER_PORT);
+                BufferedReader newReader = new BufferedReader(new InputStreamReader(newSocket.getInputStream()));
+                PrintWriter newWriter = new PrintWriter(newSocket.getOutputStream(), true);
+
+                newWriter.println("RECONNECT " + sessionToken);
+
+                Thread.ofVirtual().start(() -> {
+                        try {
+                            String response;
+                            while ((response = newReader.readLine()) != null) {
+                                if (response.startsWith("RESUME_OK")) {
+                                    System.out.println("Reconnected successfully!");
+                                }
+                                System.out.println(response);
+                            }
+                        } catch (IOException e) {
+                            reconnect();
+                        }
+                    });
+            } catch (IOException e) {
+                System.err.println("Reconnect failed, retrying in 5 seconds...");
+                try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
+            }
         }
     }
 }

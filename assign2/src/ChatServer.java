@@ -20,7 +20,7 @@ public class ChatServer {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                new Thread(() -> handleClient(clientSocket)).start();
+                Thread.ofVirtual().start(() -> handleClient(clientSocket));
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -53,6 +53,7 @@ public class ChatServer {
         ) {
             writer.println("Welcome to the Chat Server!");
             writer.println("Please authenticate using: AUTH <username> <password>");
+            writer.println("If reconnecting: RECONNECT <token>");
 
             String line;
             while ((line = reader.readLine()) != null) {
@@ -73,17 +74,17 @@ public class ChatServer {
                         String user = credentials[0];
                         String pass = credentials[1];
                         if (authenticate(user, pass)) {
-                            token = UUID.randomUUID().toString();
-                            Session session = new Session(user, token, Instant.now().plus(Duration.ofMinutes(30)));
                             lock.lock();
                             try {
+                                token = UUID.randomUUID().toString();
+                                Session session = new Session(user, token, Instant.now().plus(Duration.ofMinutes(30)));
                                 activeSessions.put(token, session);
+                                username = user;
+                                writer.println("AUTH_SUCCESS " + token);
+                                writer.println("Available commands: JOIN <room>, LEAVE, MSG <message>, QUIT, LIST");
                             } finally {
                                 lock.unlock();
                             }
-                            username = user;
-                            writer.println("AUTH_SUCCESS " + token);
-                            writer.println("Available commands: JOIN <room>, LEAVE, MSG <message>, QUIT, LIST");
                         } else {
                             writer.println("ERROR: Authentication failed.");
                         }
@@ -104,11 +105,50 @@ public class ChatServer {
                         try {
                             currentRoom = chatRooms.computeIfAbsent(roomName, Room::new);
                             currentRoom.addClient(username, writer);
+                            Session sess = activeSessions.get(token);
+                            if(sess != null) {
+                                sess.setCurrentRoom(roomName);
+                            }
                         } finally {
                             lock.unlock();
                         }
                         writer.println("Joined room: " + roomName);
                         currentRoom.broadcast(username + " has joined the room.", username);
+                        break;
+
+                    case "RECONNECT":
+                        if (parts.length < 2) {
+                            writer.println("ERROR: Token required.");
+                            break;
+                        }
+                        String tkn = parts[1];
+                        lock.lock();
+                        try {
+                            Session sess = activeSessions.get(tkn);
+                            if (sess != null && !sess.isExpired()) {
+                                sess.RenovateExpiry();
+
+                                username = sess.username;
+                                token = tkn;
+                                currentRoom = chatRooms.get(sess.getCurrentRoom());
+
+                                if(currentRoom != null) {
+                                    currentRoom.addClient(username, writer);
+                                }
+
+                                writer.println("RESUME_OK Welcome back, " + sess.username);
+                                writer.println("Available commands: JOIN <room>, LEAVE, MSG <message>, QUIT, LIST");
+
+                                if (currentRoom != null) {
+                                    currentRoom.broadcast(username + " has reconnected.", username);
+                                }
+                            } else {
+                                writer.println("ERROR: Invalid or expired token");
+                                activeSessions.remove(tkn);
+                            }
+                        } finally {
+                            lock.unlock();
+                        }
                         break;
 
                     case "LEAVE":
@@ -173,21 +213,5 @@ public class ChatServer {
 
     private static boolean authenticate(String username, String password) {
         return password.equals(userCredentials.get(username));
-    }
-
-    private static class Session {
-        String username;
-        String token;
-        Instant expiry;
-
-        Session(String username, String token, Instant expiry) {
-            this.username = username;
-            this.token = token;
-            this.expiry = expiry;
-        }
-
-        boolean isExpired() {
-            return Instant.now().isAfter(expiry);
-        }
     }
 }
