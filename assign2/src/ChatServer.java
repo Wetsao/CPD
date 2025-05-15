@@ -52,8 +52,9 @@ public class ChatServer {
                 PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)
         ) {
             writer.println("Welcome to the Chat Server!");
-            writer.println("Please authenticate using: AUTH <username> <password>");
+            writer.println("Please authenticate or register using: AUTH <username> <password> or REGISTER <username> <password>");
             writer.println("If reconnecting: RECONNECT <token>");
+
 
             String line;
             while ((line = reader.readLine()) != null) {
@@ -71,14 +72,32 @@ public class ChatServer {
                             writer.println("ERROR: Invalid AUTH command.");
                             break;
                         }
+                        
                         String user = credentials[0];
                         String pass = credentials[1];
                         if (authenticate(user, pass)) {
                             lock.lock();
                             try {
+                                boolean userAlreadyLoggedIn = false;
+                                Iterator<Session> iterator = activeSessions.values().iterator();
+                                while (iterator.hasNext()) {
+                                    Session session = iterator.next();
+                                    if (session.username.equals(user)) {
+                                        if (session.isExpired()) {
+                                            iterator.remove();
+                                        } else {
+                                            userAlreadyLoggedIn = true;
+                                        }
+                                    }
+                                }
+                                if (userAlreadyLoggedIn) {
+                                    writer.println("ERROR: User already logged in.");
+                                    break; // Exit the switch case
+                                }
+                                // Create new session
                                 token = UUID.randomUUID().toString();
-                                Session session = new Session(user, token, Instant.now().plus(Duration.ofMinutes(30)));
-                                activeSessions.put(token, session);
+                                Session newSession = new Session(user, token, Instant.now().plus(Duration.ofMinutes(30)));
+                                activeSessions.put(token, newSession);
                                 username = user;
                                 writer.println("AUTH_SUCCESS " + token);
                                 writer.println("Available commands: JOIN <room>, LEAVE, MSG <message>, QUIT, LIST");
@@ -89,6 +108,55 @@ public class ChatServer {
                             writer.println("ERROR: Authentication failed.");
                         }
                         break;
+                    
+                    case "REGISTER":
+                        if (username != null) {
+                            writer.println("ERROR: You are already authenticated");
+                            break;
+                        }
+                        if (parts.length < 2) {
+                            writer.println("ERROR: Invalid REGISTER command");
+                            break;
+                        }
+                        String[] regParts = parts[1].split(" ", 2);
+                        if (regParts.length < 2) {
+                            writer.println("ERROR: Invalid format. Use: REGISTER <username> <password>");
+                            break;
+                        }
+                        String newUser = regParts[0];
+                        String newPass = regParts[1];
+                        if (!newUser.matches("^[a-zA-Z0-9]{3,20}$")) {
+                            writer.println("ERROR: Username must be 3-20 alphanumeric characters");
+                            break;
+                        }
+                        if (newPass.length() < 4) {
+                            writer.println("ERROR: Password must be at least 4 characters");
+                            break;
+                        }
+                        
+                        lock.lock();
+
+                        try {
+                        if (userCredentials.containsKey(newUser)) {
+                            writer.println("ERROR: Username already exists");
+                            break;
+                        }
+                        
+                        // Add to file
+                        try (FileWriter fw = new FileWriter("users.txt", true);
+                            BufferedWriter bw = new BufferedWriter(fw);
+                            PrintWriter out = new PrintWriter(bw)) {
+                            out.println(newUser + ":" + newPass);
+                            userCredentials.put(newUser, newPass);
+                            writer.println("REGISTER_SUCCESS Account created");
+                        } catch (IOException e) {
+                            writer.println("ERROR: Registration failed. Please try again");
+                            System.err.println("Error saving user: " + e.getMessage());
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                    break;
 
                     case "LIST":
                         // devolve ao cliente a lista de salas existentes
