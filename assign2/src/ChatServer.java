@@ -70,14 +70,32 @@ public class ChatServer {
                             writer.println("ERROR: Invalid AUTH command.");
                             break;
                         }
+                        
                         String user = credentials[0];
                         String pass = credentials[1];
                         if (authenticate(user, pass)) {
-                            token = UUID.randomUUID().toString();
-                            Session session = new Session(user, token, Instant.now().plus(Duration.ofMinutes(30)));
                             lock.lock();
                             try {
-                                activeSessions.put(token, session);
+                                boolean userAlreadyLoggedIn = false;
+                                Iterator<Session> iterator = activeSessions.values().iterator();
+                                while (iterator.hasNext()) {
+                                    Session session = iterator.next();
+                                    if (session.username.equals(user)) {
+                                        if (session.isExpired()) {
+                                            iterator.remove();
+                                        } else {
+                                            userAlreadyLoggedIn = true;
+                                        }
+                                    }
+                                }
+                                if (userAlreadyLoggedIn) {
+                                    writer.println("ERROR: User already logged in.");
+                                    break; // Exit the switch case
+                                }
+                                // Create new session
+                                token = UUID.randomUUID().toString();
+                                Session newSession = new Session(user, token, Instant.now().plus(Duration.ofMinutes(30)));
+                                activeSessions.put(token, newSession);
                             } finally {
                                 lock.unlock();
                             }
