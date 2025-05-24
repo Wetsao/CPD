@@ -6,10 +6,14 @@ Este projecto implementa um sistema de chat cliente-servidor em Java SE 21+, com
 ## 2. Features Implementadas
 - **Virtual Threads** (`Thread.startVirtualThread`) para cada cliente, reduzindo overhead de threads.
 - **Gestão de concorrência** com `ReentrantLock` em `activeSessions` e `chatRooms`.
-- **Autenticação** via `AUTH <user> <pass>` (gera token UUID com 30 min de validade).
-- **Retoma de sessão** via `AUTH_TOKEN <token>`, com token guardado pelo cliente em `token.txt`.
+- **Autenticação** via `AUTH <user> <pass>`.
 - **Fault tolerance**: cliente tenta reconectar‐se automaticamente e reatacha à mesma sala sem pedir credenciais de novo.
-- Todas as funcionalidades descritas no enunciado estão completas.
+- **Comandos**:
+  - `JOIN <room>`: Junta-se a uma sala de chat, caso não exista cria.
+  - `LEAVE`: Sai da sala atual.
+  - `LIST`: Lista salas disponíveis.
+  - `MESSAGE <msg>`: Envia mensagem para a sala atual.
+  - `QUIT`: Termina a sessão do cliente.
 
 ## 3. Project Structure
 Na pasta `src/`:
