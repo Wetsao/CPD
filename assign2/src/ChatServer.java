@@ -101,6 +101,7 @@ public class ChatServer {
                                 username = user;
                                 writer.println("AUTH_SUCCESS " + token);
                                 writer.println("Available commands: JOIN <room>, LEAVE, MSG <message>, QUIT, LIST");
+                                writer.println("You can also create an AI Room using CREATE_AI name prompt");
                             } finally {
                                 lock.unlock();
                             }
@@ -184,6 +185,36 @@ public class ChatServer {
                         currentRoom.broadcast(username + " has joined the room.", username);
                         break;
 
+                    case "CREATE_AI":
+                        if (username == null) {
+                            writer.println("ERROR: Authentication required.");
+                            break;
+                        }
+                        if (parts.length < 2) {
+                            writer.println("ERROR: Syntax: CREATE_AI <roomname> <prompt>");
+                            break;
+                        }
+                        String[] aiParts = parts[1].split(" ", 2);
+                        if (aiParts.length < 2) {
+                            writer.println("ERROR: Provide room name and prompt.");
+                            break;
+                        }
+                        String aiRoomName = aiParts[0];
+                        String aiPrompt = aiParts[1];
+                        lock.lock();
+                        try {
+                            if (chatRooms.containsKey(aiRoomName)) {
+                                writer.println("ERROR: Room exists.");
+                            } else {
+                                Room aiRoom = new AiRoom(aiRoomName, aiPrompt);
+                                chatRooms.put(aiRoomName, aiRoom);
+                                writer.println("AI_ROOM_CREATED " + aiRoomName);
+                            }
+                        } finally {
+                            lock.unlock();
+                        }
+                        break;
+
                     case "RECONNECT":
                         if (parts.length < 2) {
                             writer.println("ERROR: Token required.");
@@ -232,13 +263,25 @@ public class ChatServer {
 
                     case "MSG":
                         if (parts.length < 2) {
-                            writer.println("ERROR: Message content required.");
+                            writer.println("ERROR: Message required.");
                             break;
                         }
                         if (currentRoom != null) {
-                            currentRoom.broadcast(username + ": " + parts[1], username);
+                            String message = username + ": " + parts[1];
+                            currentRoom.broadcast(message, username);
+                            if (currentRoom instanceof AiRoom) {
+                                AiRoom aiRoom = (AiRoom) currentRoom;
+                                aiRoom.addMessage(message);
+                                // Async call to generate bot response
+                                Thread.ofVirtual().start(() -> {
+                                    String botResponse = aiRoom.generateResponse();
+                                    String botMessage = "Bot: " + botResponse;
+                                    aiRoom.addMessage(botMessage);
+                                    aiRoom.broadcast(botMessage, "Bot");
+                                });
+                            }
                         } else {
-                            writer.println("ERROR: Not in any room.");
+                            writer.println("ERROR: Not in a room.");
                         }
                         break;
 
