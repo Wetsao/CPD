@@ -1,7 +1,7 @@
 # CPD Distributed Chat System
 
 ## 1. Introduction
-Este projecto implementa um sistema de chat cliente-servidor em Java SE 21+, com salas de chat, autenticação por token e tolerância a falhas.
+Este projecto implementa um sistema de chat cliente-servidor em Java SE 21+, com salas de chat, autenticação por token, tolerância a falhas e a possibilidade de comunicação com uma AI.
 
 ## 2. Features Implementadas
 - **Virtual Threads** (`Thread.startVirtualThread`) para cada cliente, reduzindo overhead de threads.
@@ -14,9 +14,12 @@ Este projecto implementa um sistema de chat cliente-servidor em Java SE 21+, com
   - `LIST`: Lista salas disponíveis.
   - `MESSAGE <msg>`: Envia mensagem para a sala atual.
   - `QUIT`: Termina a sessão do cliente.
+  - `CREATE_AI <name> <prompt>`: Cria uma sala com AI.
 
 ## 3. Project Structure
 Na pasta `src/`:
+
+- `AiRoom.java`
 - `ChatServer.java`
 - `ChatClient.java`
 - `Room.java`
@@ -27,6 +30,7 @@ Na pasta `src/`:
 ## 4. Prerequisites
 - Java SE 21 ou superior
 - Ficheiro `users.txt` com um par `username:password` por linha
+- Ollama14
 
 
 ## 5. Compilação & Execução
@@ -42,3 +46,11 @@ java ChatServer
 
 # 3) Noutro terminal, arrancar o cliente
 java ChatClient 
+
+# 4) Para utilização da "room" com AI é necessario correr o docker com ollama14, em outro terminal:
+sudo docker run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama14 ollama/ollama 
+
+# 5) Em caso do container ja ter sido criado
+
+docker start ollama14
+
