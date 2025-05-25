@@ -2,3 +2,4 @@ John:1234
 Alice:1234
 Bob:1234
 Baiao:1234
+Chico:1234
